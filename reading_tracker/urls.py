@@ -5,11 +5,11 @@ from django.contrib.auth import views as auth_views
 urlpatterns = [
     # Authentication URLs
     path('login/', auth_views.LoginView.as_view(template_name='reading_tracker/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
     path('register/', views.register, name='register'),
     
     # Main pages
-    path('', views.home, name='home'),
+    path(' ', views.home, name='home'),
     path('dashboard/', views.dashboard, name='dashboard'),
     
     # Profile management

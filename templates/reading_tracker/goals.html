@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Reading Goals</h2>
+<ul>
+    {% for goal in goals %}
+        <li>
+            <strong>{{ goal.goal_type }}</strong>: {{ goal.target_pages }} pages from {{ goal.start_date }} to {{ goal.end_date }}
+        </li>
+    {% empty %}
+        <li>No goals set.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

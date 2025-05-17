@@ -20,13 +20,11 @@ def register(request):
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            UserProfile.objects.create(user=user)
             login(request, user)
-            messages.success(request, 'Registration successful! Welcome to Reading Tracker.')
             return redirect('dashboard')
     else:
         form = UserRegistrationForm()
-    return render(request, 'reading_tracker/register.html', {'form': form})
+    return render(request, 'registration/register.html', {'form': form})
 
 @login_required
 def dashboard(request):
@@ -213,30 +211,82 @@ def delete_goal(request, pk):
     return render(request, 'reading_tracker/delete_goal.html', {'goal': goal})
 
 @login_required
+def reading_progress(request):
+    return render(request, 'reading_tracker/reading_progress.html')
+
+@login_required
 def reading_progress_data(request):
-    # Get reading progress for the last 30 days
-    thirty_days_ago = timezone.now() - timedelta(days=30)
-    sessions = ReadingSession.objects.filter(
+    days = int(request.GET.get('days', 30))
+    start_date = timezone.now().date() - timedelta(days=days)
+    
+    # Get completed books by date
+    completed_books = Book.objects.filter(
         user=request.user,
-        start_time__gte=thirty_days_ago
-    ).order_by('start_time')
+        status='CO',
+        updated_at__date__gte=start_date
+    ).order_by('updated_at')
     
+    # Create a dictionary of dates and cumulative books completed
     dates = []
-    pages = []
+    books_read = []
+    cumulative_books = 0
     
-    for session in sessions:
-        date_str = session.start_time.strftime('%Y-%m-%d')
-        if date_str in dates:
-            index = dates.index(date_str)
-            pages[index] += session.pages_read
-        else:
-            dates.append(date_str)
-            pages.append(session.pages_read)
+    current_date = start_date
+    end_date = timezone.now().date()
+    
+    while current_date <= end_date:
+        books_on_date = completed_books.filter(updated_at__date=current_date).count()
+        cumulative_books += books_on_date
+        
+        dates.append(current_date.strftime('%Y-%m-%d'))
+        books_read.append(cumulative_books)
+        current_date += timedelta(days=1)
+    
+    # Calculate average pages per day
+    reading_sessions = ReadingSession.objects.filter(
+        user=request.user,
+        start_time__date__gte=start_date
+    )
+    total_pages = reading_sessions.aggregate(Sum('pages_read'))['pages_read__sum'] or 0
+    avg_pages_per_day = round(total_pages / days, 1) if total_pages > 0 else 0
+    
+    # Get total completed books
+    total_books_completed = Book.objects.filter(
+        user=request.user,
+        status='CO'
+    ).count()
     
     return JsonResponse({
         'dates': dates,
-        'pages': pages
+        'books_read': books_read,
+        'avg_pages_per_day': avg_pages_per_day,
+        'total_books_completed': total_books_completed
     })
+
+@login_required
+def book_status_data(request):
+    book_stats = Book.objects.filter(user=request.user).values('status').annotate(
+        count=Count('status')
+    )
+    
+    status_counts = {
+        'currently_reading': 0,
+        'completed': 0,
+        'abandoned': 0,
+        'to_be_read': 0
+    }
+    
+    for stat in book_stats:
+        if stat['status'] == 'CR':
+            status_counts['currently_reading'] = stat['count']
+        elif stat['status'] == 'CO':
+            status_counts['completed'] = stat['count']
+        elif stat['status'] == 'AB':
+            status_counts['abandoned'] = stat['count']
+        elif stat['status'] == 'TB':
+            status_counts['to_be_read'] = stat['count']
+    
+    return JsonResponse(status_counts)
 
 @login_required
 def genre_distribution_data(request):
