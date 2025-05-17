@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (bookStatusBarChart) {
                     bookStatusBarChart.destroy();
                 }
-                // Doughnut Chart
+                // Bar Chart
                 bookStatusChart = new Chart(
                     document.getElementById('bookStatusChart'),
                     {
@@ -325,14 +325,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         options: {
                             responsive: true,
                             plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: {
-                                        font: {
-                                            size: 12
-                                        }
-                                    }
-                                }
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: { beginAtZero: true, grid: { display: false } }
                             }
                         }
                     }
