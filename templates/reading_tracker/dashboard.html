@@ -3,6 +3,7 @@
 {% block title %}Dashboard - Book Reading Habit Analyzer{% endblock %}
 
 {% block content %}
+
 <div class="container">
     <h1 class="mb-4">Reading Dashboard</h1>
     
@@ -28,55 +29,47 @@
         </div>
         <div class="col-md-3">
             <div class="stat-card">
-                <h3>Pages (30 days)</h3>
-                <p class="h2 mb-0">{{ pages_last_30_days }}</p>
+                <h3>Current Streak</h3>
+                <p class="h2 mb-0" id="currentStreak">0 days</p>
             </div>
         </div>
     </div>
 
-    <!-- Reading Progress Chart -->
-   <div class="container">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card mb-4">
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <!-- Reading Progress Chart -->
+        <div class="col-md-6 d-flex justify-content-center">
+            <div class="card shadow-sm" style="width: 100%; max-width: 350px;">
                 <div class="card-body">
-                    <h2 class="card-title">Reading Progress</h2>
+                    <h4 class="card-title text-center mb-3" style="font-size: 1.1rem; font-weight: 600;">Reading Progress</h4>
                     <div class="mb-3">
                         <select id="timeRange" class="form-select">
                             <option value="7" selected>Last 7 Days</option>
-                            <option value="30" >Last 30 Days</option>
+                            <option value="30">Last 30 Days</option>
                             <option value="90">Last 3 Months</option>
                             <option value="365">Last Year</option>
                         </select>
                     </div>
-                    <canvas id="readingProgressChart"></canvas>
+                    <canvas id="readingProgressChart" width="300" height="180"></canvas>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="row">
-        <div class="col-md-12 mb-4">
-            <div class="card">
+        <!-- Book Status Overview Chart -->
+        <div class="col-md-6 d-flex justify-content-center">
+            <div class="card shadow-sm" style="width: 100%; max-width: 350px;">
                 <div class="card-body">
-                    <h3 class="card-title">Book Status Distribution</h3>
-                    <canvas id="bookStatusBarChart" height="100"></canvas>
+                    <h4 class="card-title text-center mb-3" style="font-size: 1.1rem; font-weight: 600;">Book Status Overview</h4>
+                    <canvas id="bookStatusChart" width="300" height="180"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
+    <!-- Reading Pace and Genre Distribution -->
+    <div class="row mb-4">
+        <!-- Reading Pace Card -->
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h3 class="card-title">Status Overview</h3>
-                    <canvas id="bookStatusChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
+            <div class="card shadow-sm">
                 <div class="card-body">
                     <h3 class="card-title">Reading Pace</h3>
                     <div class="text-center">
@@ -88,13 +81,23 @@
                 </div>
             </div>
         </div>
+        <!-- Genre Distribution Donut Chart -->
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title text-center">Books by Genre</h3>
+                    <div style="width: 100%; max-width: 350px; margin: 0 auto;">
+                        <canvas id="genreDistributionChart" width="300" height="180"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
 
     <!-- Current Books and Goals -->
-    <div class="row">
+    <div class="row mb-4">
         <div class="col-md-6">
-            <div class="card">
+            <div class="card shadow-sm h-100">
                 <div class="card-body">
                     <h5 class="card-title">Currently Reading</h5>
                     {% if current_books %}
@@ -117,7 +120,7 @@
             </div>
         </div>
         <div class="col-md-6">
-            <div class="card">
+            <div class="card shadow-sm h-100">
                 <div class="card-body">
                     <h5 class="card-title">Active Goals</h5>
                     {% if active_goals %}
@@ -146,45 +149,109 @@
             </div>
         </div>
     </div>
+
+    <!-- Reading Streak Calendar -->
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card p-3 shadow-sm">
+                <h5 class="text-center">Reading Streak Calendar</h5>
+                <div class="d-flex justify-content-between mb-3">
+                    <button id="prevMonth" class="btn btn-sm btn-outline-secondary">&lt; Previous</button>
+                    <h5 id="currentMonthYear" class="mb-0"></h5>
+                    <button id="nextMonth" class="btn btn-sm btn-outline-secondary">Next &gt;</button>
+                </div>
+                <div id="streakCalendar"></div>
+                <div class="mt-3 text-center">
+                    <div class="streak-legend d-inline-block me-3">
+                        <span class="legend-color active-day me-1"></span>
+                        <span>Read</span>
+                    </div>
+                    <div class="streak-legend d-inline-block me-3">
+                        <span class="legend-color streak-day me-1"></span>
+                        <span>Current Streak</span>
+                    </div>
+                    <div class="streak-legend d-inline-block">
+                        <span class="legend-color today-day me-1"></span>
+                        <span>Today</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Fetch and initialize reading progress chart
-    fetch('{% url "reading_progress_data" %}')
-        .then(response => response.json())
-        .then(data => {
-            initReadingProgressChart('reading-progress-chart', data);
-        });
-
-    // Fetch and initialize genre distribution chart
-    fetch('{% url "genre_distribution_data" %}')
-        .then(response => response.json())
-        .then(data => {
-            initGenreChart('genre-chart', data);
-        });
-});
-</script>
-
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize variables for calendar
+    let currentDate = new Date();
+    let activityDates = [];
+    
+    // Fetch reading activity data
+    fetch('/api/reading-activity/')
+        .then(response => response.json())
+        .then(data => {
+            activityDates = data.dates;
+            updateStreakCalendar(currentDate);
+            updateStreakCount();
+        });
+
+    // Genre Distribution Donut Chart
+    fetch('/api/genre-distribution/')
+        .then(response => response.json())
+        .then(data => {
+            const ctx = document.getElementById('genreDistributionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.genres,
+                    datasets: [{
+                        data: data.counts,
+                        backgroundColor: [
+                            '#36a2eb',
+                            '#4bc0c0',
+                            '#ff6384',
+                            '#ffcd56',
+                            '#9966ff',
+                            '#c9cbcf'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Books by Genre'
+                        }
+                    }
+                }
+            });
+        });
+
+    // Charts
     let readingProgressChart = null;
     let bookStatusChart = null;
     let bookStatusBarChart = null;
 
     function updateCharts(days) {
-        // Fetch reading progress data
+        // Reading Progress Chart
         fetch(`/api/reading-progress/?days=${days}`)
             .then(response => response.json())
             .then(data => {
                 if (readingProgressChart) {
                     readingProgressChart.destroy();
                 }
-                
                 readingProgressChart = new Chart(
                     document.getElementById('readingProgressChart'),
                     {
@@ -218,13 +285,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 );
-
                 // Update statistics
                 document.getElementById('avgPagesPerDay').textContent = data.avg_pages_per_day;
                 document.getElementById('booksCompleted').textContent = data.total_books_completed;
             });
 
-        // Fetch book status data
+        // Book Status Data
         fetch('/api/book-status/')
             .then(response => response.json())
             .then(data => {
@@ -234,82 +300,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (bookStatusBarChart) {
                     bookStatusBarChart.destroy();
                 }
-                
-                // Bar Chart (now displayed first and more prominently)
-                bookStatusBarChart = new Chart(
-                    document.getElementById('bookStatusBarChart'),
-                    {
-                        type: 'bar',
-                        data: {
-                            labels: ['Currently Reading', 'Completed', 'Abandoned', 'To Be Read'],
-                            datasets: [{
-                                label: 'Number of Books',
-                                data: [
-                                    data.currently_reading,
-                                    data.completed,
-                                    data.abandoned,
-                                    data.to_be_read
-                                ],
-                                backgroundColor: [
-                                    '#36a2eb',  // Blue for Currently Reading
-                                    '#4bc0c0',  // Green for Completed
-                                    '#ff6384',  // Red for Abandoned
-                                    '#ffcd56'   // Yellow for To Be Read
-                                ],
-                                borderWidth: 1,
-                                borderColor: '#fff'
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                        stepSize: 1,
-                                        font: {
-                                            size: 12
-                                        }
-                                    },
-                                    title: {
-                                        display: true,
-                                        text: 'Number of Books',
-                                        font: {
-                                            size: 14,
-                                            weight: 'bold'
-                                        }
-                                    }
-                                },
-                                x: {
-                                    ticks: {
-                                        font: {
-                                            size: 12
-                                        }
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        label: function(context) {
-                                            return `${context.parsed.y} book${context.parsed.y !== 1 ? 's' : ''}`;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                );
-
-                // Doughnut Chart (now as a secondary visualization)
+                // Doughnut Chart
                 bookStatusChart = new Chart(
                     document.getElementById('bookStatusChart'),
                     {
-                        type: 'doughnut',
+                        type: 'bar',
                         data: {
                             labels: ['Currently Reading', 'Completed', 'Abandoned', 'To Be Read'],
                             datasets: [{
@@ -350,10 +345,226 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCharts(e.target.value);
     });
 
-    // Initial load with 30 days
+    // Initial load with 7 days
     updateCharts(7);
+
+    // Calendar navigation
+    document.getElementById('prevMonth').addEventListener('click', function() {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        updateStreakCalendar(currentDate);
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', function() {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        updateStreakCalendar(currentDate);
+    });
+
+    function updateStreakCalendar(date) {
+        const container = document.getElementById('streakCalendar');
+        container.innerHTML = '';
+
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        
+        // Update month/year display
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December"];
+        document.getElementById('currentMonthYear').textContent = `${monthNames[month]} ${year}`;
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Create weekday headers
+        const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        weekdays.forEach(day => {
+            const dayHeader = document.createElement('div');
+            dayHeader.textContent = day;
+            dayHeader.style.fontWeight = 'bold';
+            dayHeader.classList.add('calendar-header');
+            container.appendChild(dayHeader);
+        });
+
+        // Add empty cells for days before the first day of the month
+        for (let i = 0; i < firstDay; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.classList.add('day', 'empty');
+            container.appendChild(emptyCell);
+        }
+
+        // Format date for comparison
+        const formatDate = d => d.toISOString().split('T')[0];
+        const today = formatDate(new Date());
+
+        // Add cells for each day of the month
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateObj = new Date(year, month, day);
+            const dateStr = formatDate(dateObj);
+
+            const dayCell = document.createElement('div');
+            dayCell.classList.add('day');
+            dayCell.textContent = day;
+
+            // Highlight today
+            if (dateStr === today) {
+                dayCell.classList.add('today');
+            }
+
+            // Mark days with reading activity
+            if (activityDates.includes(dateStr)) {
+                dayCell.classList.add('active');
+            }
+
+            // Check if this day is part of the current streak
+            const streakIndex = activityDates.indexOf(today);
+            if (streakIndex >= 0) {
+                const streakStart = new Date(activityDates[streakIndex]);
+                const currentDay = new Date(dateStr);
+                
+                if (currentDay <= streakStart && currentDay >= new Date(streakStart.setDate(streakStart.getDate() - streakIndex))) {
+                    dayCell.classList.add('streak');
+                }
+            }
+
+            container.appendChild(dayCell);
+        }
+    }
+
+    function updateStreakCount() {
+        // Calculate current streak
+        let streak = 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const formatDate = d => d.toISOString().split('T')[0];
+        const todayStr = formatDate(today);
+        
+        if (activityDates.includes(todayStr)) {
+            streak = 1;
+            let prevDay = new Date(today);
+            
+            while (true) {
+                prevDay.setDate(prevDay.getDate() - 1);
+                const prevDayStr = formatDate(prevDay);
+                
+                if (activityDates.includes(prevDayStr)) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            // No reading today, streak is 0
+            streak = 0;
+        }
+        
+        document.getElementById('currentStreak').textContent = streak === 0 ? "No streak" : `${streak} day${streak > 1 ? 's' : ''}`;
+    }
 });
 </script>
+{% endblock %}
 
+{% block extra_css %}
+<style>
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
 
+.stat-card h3 {
+    font-size: 1rem;
+    color: #6c757d;
+    margin-bottom: 10px;
+}
+
+#streakCalendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    font-family: Arial, sans-serif;
+    user-select: none;
+}
+
+#streakCalendar .calendar-header {
+    text-align: center;
+    padding: 5px;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+#streakCalendar .day {
+    border: 1px solid #e9ecef;
+    padding: 8px;
+    text-align: center;
+    cursor: default;
+    border-radius: 4px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+#streakCalendar .day.today {
+    border: 2px solid #4bc0c0;
+    font-weight: bold;
+}
+
+#streakCalendar .day.active {
+    background-color: #4bc0c0;
+    color: white;
+}
+
+#streakCalendar .day.streak {
+    background-color: #36a2eb;
+    color: white;
+}
+
+#streakCalendar .day.empty {
+    background-color: transparent;
+    border: none;
+    cursor: default;
+}
+
+.streak-legend {
+    font-size: 0.9rem;
+}
+
+.legend-color {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+.active-day {
+    background-color: #4bc0c0;
+}
+
+.streak-day {
+    background-color: #36a2eb;
+}
+
+.today-day {
+    background-color: white;
+    border: 1px solid #4bc0c0;
+}
+
+.goal-progress {
+    margin-bottom: 15px;
+}
+
+.goal-progress .progress {
+    height: 20px;
+    margin: 5px 0;
+}
+
+.goal-progress .percentage {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+</style>
 {% endblock %}

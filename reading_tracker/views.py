@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
 from django.http import JsonResponse
 from django.db.models import Sum, Count
 from django.utils import timezone
@@ -299,3 +299,117 @@ def genre_distribution_data(request):
         'genres': [genre['genre'] for genre in genres],
         'counts': [genre['count'] for genre in genres]
     })
+
+@login_required
+def analytics_dashboard(request):
+    # Time range for analysis
+    days = int(request.GET.get('days', 30))
+    start_date = timezone.now() - timedelta(days=days)
+    
+    # Get reading sessions for the period
+    sessions = ReadingSession.objects.filter(
+        user=request.user,
+        start_time__gte=start_date
+    )
+    
+    # Daily pages read
+    daily_pages = sessions.values('start_time__date').annotate(
+        pages=Sum('pages_read')
+    ).order_by('start_time__date')
+    
+    # Reading patterns
+    time_patterns = sessions.annotate(
+        hour=ExtractHour('start_time')
+    ).values('hour').annotate(
+        count=Count('id'),
+        avg_pages=Avg('pages_read')
+    ).order_by('hour')
+    
+    weekday_patterns = sessions.annotate(
+        weekday=ExtractWeekDay('start_time')
+    ).values('weekday').annotate(
+        count=Count('id'),
+        avg_pages=Avg('pages_read')
+    ).order_by('weekday')
+    
+    # Genre analysis
+    genre_stats = Book.objects.filter(
+        user=request.user,
+        readingsession_start_time_gte=start_date
+    ).values('genre').annotate(
+        total_pages=Sum('readingsession__pages_read'),
+        total_time=Sum('readingsession_end_time') - Sum('readingsession_start_time'),
+        book_count=Count('id', distinct=True)
+    ).order_by('-total_pages')
+    
+    # Reading streaks
+    streak_data = {}
+    for session in sessions:
+        date_str = session.start_time.date().isoformat()
+        if date_str in streak_data:
+            streak_data[date_str] += session.pages_read
+        else:
+            streak_data[date_str] = session.pages_read
+    
+    # Mood and comprehension analysis
+    mood_stats = sessions.exclude(mood='').values('mood').annotate(
+        count=Count('id'),
+        avg_pages=Avg('pages_read')
+    ).order_by('mood')
+    
+    comprehension_stats = sessions.exclude(comprehension='').values('comprehension').annotate(
+        count=Count('id'),
+        avg_pages=Avg('pages_read')
+    ).order_by('comprehension')
+    
+    # Calculate total statistics
+    total_stats = {
+        'total_books': Book.objects.filter(user=request.user, status='CO').count(),
+        'total_pages': sessions.aggregate(Sum('pages_read'))['pages_read__sum'] or 0,
+        'total_time': sum((s.duration().total_seconds() / 3600) for s in sessions),
+        'avg_pages_per_session': sessions.aggregate(Avg('pages_read'))['pages_read__avg'] or 0,
+        'total_sessions': sessions.count(),
+    }
+    
+    context = {
+        'total_stats': total_stats,
+        'daily_pages': list(daily_pages),
+        'time_patterns': list(time_patterns),
+        'weekday_patterns': list(weekday_patterns),
+        'genre_stats': list(genre_stats),
+        'streak_data': streak_data,
+        'mood_stats': list(mood_stats),
+        'comprehension_stats': list(comprehension_stats),
+        'days': days,
+    }
+    
+    return render(request, 'reading_tracker/analytics.html', context)
+
+@login_required
+def genre_distribution(request):
+    genre_data = Book.objects.values('genre').annotate(count=Count('id'))
+    genres = [entry['genre'] for entry in genre_data]
+    counts = [entry['count'] for entry in genre_data]
+    return JsonResponse({'genres': genres, 'counts': counts})
+
+@login_required
+def user_logout(request):
+    logout(request)
+    messages.success(request, "You have been logged out.")
+    return redirect('login')
+
+@login_required
+def reading_activity_api(request):
+    # Get dates with reading activity for the current user
+    user = request.user
+    dates = []
+    
+    # Get all unique dates with reading sessions
+    reading_sessions = ReadingSession.objects.filter(
+        user=user
+    ).values_list('date', flat=True).distinct()
+    
+    # Convert to YYYY-MM-DD format
+    dates = [session.strftime('%Y-%m-%d') for session in reading_sessions]
+    
+    return JsonResponse({'dates': dates})

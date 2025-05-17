@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -106,3 +105,4 @@ class ReadingGoal(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+

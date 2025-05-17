@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm" style="max-width: 500px; margin: 0 auto;">
+        <div class="card-body">
+            <h3 class="card-title text-danger mb-4">Delete Goal</h3>
+            <p>Are you sure you want to delete this goal?</p>
+            <ul>
+                <li><strong>Type:</strong> {{ goal.get_goal_type_display }}</li>
+                <li><strong>Target Pages:</strong> {{ goal.target_pages }}</li>
+                {% if goal.target_books %}
+                <li><strong>Target Books:</strong> {{ goal.target_books }}</li>
+                {% endif %}
+                <li><strong>Start Date:</strong> {{ goal.start_date }}</li>
+                <li><strong>End Date:</strong> {{ goal.end_date }}</li>
+            </ul>
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                <a href="{% url 'reading_goals' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

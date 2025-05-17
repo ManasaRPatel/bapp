@@ -1,13 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Reading Goals</h2>
-<ul>
-    {% for goal in goals %}
-        <li>
-            <strong>{{ goal.goal_type }}</strong>: {{ goal.target_pages }} pages from {{ goal.start_date }} to {{ goal.end_date }}
-        </li>
-    {% empty %}
-        <li>No goals set.</li>
-    {% endfor %}
-</ul>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Reading Goals</h2>
+        <a href="{% url 'add_goal' %}" class="btn btn-primary">Set a Goal</a>
+    </div>
+    {% if goals %}
+        <div class="row">
+            {% for goal in goals %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-2">{{ goal.get_goal_type_display }} Goal</h5>
+                            <p class="mb-1">
+                                <strong>Target:</strong> {{ goal.target_pages }} pages
+                                {% if goal.target_books %}
+                                    &amp; {{ goal.target_books }} books
+                                {% endif %}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Duration:</strong> {{ goal.start_date }} to {{ goal.end_date }}
+                            </p>
+                            <div class="d-flex justify-content-end mt-3">
+                                <a href="{% url 'edit_goal' goal.pk %}" class="btn btn-secondary btn-sm me-2">
+                                    Edit
+                                </a>
+                                <a href="{% url 'delete_goal' goal.pk %}" class="btn btn-danger btn-sm"
+                                   >
+                                    Delete
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">No goals set.</div>
+    {% endif %}
+</div>
 {% endblock %}

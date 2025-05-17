@@ -4,14 +4,17 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     # Authentication URLs
-    path('login/', auth_views.LoginView.as_view(template_name='reading_tracker/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('api/reading-activity/', views.reading_activity_api, name='reading_activity_api'),
     path('register/', views.register, name='register'),
+    path('logout/', views.user_logout, name='logout'),
     
     # Main pages
-    path(' ', views.home, name='home'),
-    path('dashboard/', views.dashboard, name='dashboard'),
-    
+    path('', views.dashboard, name='dashboard'),
+    path('home/', views.home, name='home'),
+    path('progress/', views.reading_progress, name='reading_progress'),
+    path('analytics/', views.analytics_dashboard, name='analytics'),
+    path('api/genre-distribution/', views.genre_distribution, name='genre_distribution'),
     # Profile management
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
@@ -24,10 +27,9 @@ urlpatterns = [
     path('books/<int:pk>/delete/', views.delete_book, name='delete_book'),
     
     # Reading sessions
-    path('sessions/add/', views.add_reading_session, name='add_reading_session'),
-    path('sessions/<int:pk>/', views.session_detail, name='session_detail'),
-    path('sessions/<int:pk>/edit/', views.edit_session, name='edit_session'),
-    path('sessions/<int:pk>/delete/', views.delete_session, name='delete_session'),
+    path('session/add/', views.add_reading_session, name='add_reading_session'),
+    path('session/<int:pk>/edit/', views.edit_session, name='edit_session'),
+    path('session/<int:pk>/delete/', views.delete_session, name='delete_session'),
     
     # Reading goals
     path('goals/', views.reading_goals, name='reading_goals'),
@@ -37,5 +39,5 @@ urlpatterns = [
     
     # API endpoints for charts
     path('api/reading-progress/', views.reading_progress_data, name='reading_progress_data'),
-    path('api/genre-distribution/', views.genre_distribution_data, name='genre_distribution_data'),
-] 
+    path('api/book-status/', views.book_status_data, name='book_status_data'),
+]
