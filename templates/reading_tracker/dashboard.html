@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Book Reading Habit Analyzer{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Reading Dashboard</h1>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>Total Books</h3>
+                <p class="h2 mb-0">{{ total_books }}</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>Books Completed</h3>
+                <p class="h2 mb-0">{{ books_completed }}</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>Currently Reading</h3>
+                <p class="h2 mb-0">{{ current_books.count }}</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <h3>Pages (30 days)</h3>
+                <p class="h2 mb-0">{{ pages_last_30_days }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reading Progress Chart -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Reading Progress</h5>
+                    <div class="chart-container">
+                        <canvas id="reading-progress-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Genre Distribution</h5>
+                    <div class="chart-container">
+                        <canvas id="genre-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Books and Goals -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Currently Reading</h5>
+                    {% if current_books %}
+                        <div class="list-group">
+                            {% for book in current_books %}
+                                <a href="{% url 'book_detail' book.pk %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ book.title }}</h6>
+                                        <small>{{ book.genre }}</small>
+                                    </div>
+                                    <p class="mb-1">by {{ book.author }}</p>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No books currently being read.</p>
+                        <a href="{% url 'add_book' %}" class="btn btn-primary">Add a Book</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Active Goals</h5>
+                    {% if active_goals %}
+                        {% for goal in active_goals %}
+                            <div class="goal-progress mb-3">
+                                <h6>{{ goal.get_goal_type_display }} Goal</h6>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ goal.progress }}%"
+                                         aria-valuenow="{{ goal.progress }}" aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <span class="percentage">{{ goal.progress|floatformat:1 }}%</span>
+                                <p class="mb-0">
+                                    Target: {{ goal.target_pages }} pages
+                                    {% if goal.target_books %}
+                                        and {{ goal.target_books }} books
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No active reading goals.</p>
+                        <a href="{% url 'add_goal' %}" class="btn btn-primary">Set a Goal</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch and initialize reading progress chart
+    fetch('{% url "reading_progress_data" %}')
+        .then(response => response.json())
+        .then(data => {
+            initReadingProgressChart('reading-progress-chart', data);
+        });
+
+    // Fetch and initialize genre distribution chart
+    fetch('{% url "genre_distribution_data" %}')
+        .then(response => response.json())
+        .then(data => {
+            initGenreChart('genre-chart', data);
+        });
+});
+</script>
+{% endblock %} 

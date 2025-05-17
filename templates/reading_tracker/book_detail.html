@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ book.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                {% if book.cover_image %}
+                    <img src="{{ book.cover_image.url }}" class="card-img-top book-cover" alt="{{ book.title }}">
+                {% else %}
+                    <img src="https://via.placeholder.com/300x400" class="card-img-top book-cover" alt="No Cover">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ book.title }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">by {{ book.author }}</h6>
+                    <p class="card-text">
+                        <span class="badge {% if book.status == 'CR' %}bg-primary{% elif book.status == 'CO' %}bg-success{% elif book.status == 'AB' %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ book.get_status_display }}
+                        </span>
+                        <span class="badge bg-info">{{ book.genre }}</span>
+                    </p>
+                    <p class="card-text">
+                        <small class="text-muted">{{ book.total_pages }} pages</small>
+                        {% if book.isbn %}
+                            <br>
+                            <small class="text-muted">ISBN: {{ book.isbn }}</small>
+                        {% endif %}
+                    </p>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'edit_book' book.pk %}" class="btn btn-primary">Edit Book</a>
+                        <a href="{% url 'add_reading_session' %}?book={{ book.pk }}" class="btn btn-success">Add Reading Session</a>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            Delete Book
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Reading Progress</h5>
+                    <div class="progress mb-3">
+                        <div class="progress-bar" role="progressbar" style="width: {{ reading_progress }}%"
+                             aria-valuenow="{{ reading_progress }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ reading_progress|floatformat:1 }}%
+                        </div>
+                    </div>
+                    <p class="text-muted">
+                        {{ pages_read }} of {{ book.total_pages }} pages read
+                    </p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Reading Sessions</h5>
+                    {% if sessions %}
+                        <div class="list-group">
+                            {% for session in sessions %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ session.start_time|date }}</h6>
+                                        <small>{{ session.duration|time:"H:i:s" }}</small>
+                                    </div>
+                                    <p class="mb-1">Read {{ session.pages_read }} pages</p>
+                                    {% if session.notes %}
+                                        <small class="text-muted">{{ session.notes }}</small>
+                                    {% endif %}
+                                    <div class="mt-2">
+                                        <a href="{% url 'edit_session' session.pk %}" class="btn btn-outline-secondary btn-sm">Edit</a>
+                                        <a href="{% url 'delete_session' session.pk %}" class="btn btn-outline-danger btn-sm">Delete</a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No reading sessions recorded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Delete Book</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete "{{ book.title }}"? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'delete_book' book.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

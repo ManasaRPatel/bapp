@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Profile - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="profile-header">
+        <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+                {% if profile.profile_picture %}
+                    <img src="{{ profile.profile_picture.url }}" alt="Profile Picture" class="profile-picture">
+                {% else %}
+                    <img src="https://via.placeholder.com/150" alt="Default Profile Picture" class="profile-picture">
+                {% endif %}
+            </div>
+            <div class="col-md-9">
+                <h1 class="mb-3">{{ user.username }}</h1>
+                <p class="text-muted">{{ user.email }}</p>
+                {% if profile.bio %}
+                    <p>{{ profile.bio }}</p>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="{% url 'edit_profile' %}" class="btn btn-primary">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Reading Statistics</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h3>{{ total_books }}</h3>
+                                <p class="text-muted">Total Books</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h3>{{ books_completed }}</h3>
+                                <p class="text-muted">Books Completed</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h3>{{ pages_read }}</h3>
+                                <p class="text-muted">Pages Read</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Recent Activity</h5>
+                    {% if recent_sessions %}
+                        <div class="list-group">
+                            {% for session in recent_sessions %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ session.book.title }}</h6>
+                                        <small>{{ session.start_time|date }}</small>
+                                    </div>
+                                    <p class="mb-1">Read {{ session.pages_read }} pages</p>
+                                    {% if session.notes %}
+                                        <small class="text-muted">{{ session.notes }}</small>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent reading activity.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Active Goals</h5>
+                    {% if active_goals %}
+                        {% for goal in active_goals %}
+                            <div class="goal-progress mb-3">
+                                <h6>{{ goal.get_goal_type_display }} Goal</h6>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ goal.progress }}%"
+                                         aria-valuenow="{{ goal.progress }}" aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <span class="percentage">{{ goal.progress|floatformat:1 }}%</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No active reading goals.</p>
+                        <a href="{% url 'add_goal' %}" class="btn btn-primary">Set a Goal</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Privacy Settings</h5>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="publicProfile" {% if profile.is_public %}checked{% endif %} disabled>
+                        <label class="form-check-label" for="publicProfile">Public Profile</label>
+                    </div>
+                    <small class="text-muted d-block mt-2">Change this setting in Edit Profile</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
