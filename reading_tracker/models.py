@@ -19,11 +19,42 @@ class Book(models.Model):
         ('TB', 'To Be Read')
     )
 
+    GENRE_CHOICES = [
+        ('Fiction', (
+            ('FIC_LIT', 'Literary Fiction'),
+            ('FIC_MYS', 'Mystery'),
+            ('FIC_THR', 'Thriller'),
+            ('FIC_SFF', 'Science Fiction/Fantasy'),
+            ('FIC_ROM', 'Romance'),
+            ('FIC_HIS', 'Historical Fiction'),
+        )),
+        ('Non-Fiction', (
+            ('NON_BIO', 'Biography/Memoir'),
+            ('NON_HIS', 'History'),
+            ('NON_SCI', 'Science'),
+            ('NON_TECH', 'Technology'),
+            ('NON_SELF', 'Self-Help'),
+            ('NON_BUS', 'Business'),
+            ('NON_PHIL', 'Philosophy'),
+        )),
+        ('Other', (
+            ('OTH_POET', 'Poetry'),
+            ('OTH_DRAMA', 'Drama'),
+            ('OTH_COMIC', 'Comics/Graphic Novels'),
+            ('OTH_CHILD', 'Children\'s'),
+            ('OTH_YA', 'Young Adult'),
+            ('OTH_OTHER', 'Other'),
+        )),
+    ]
+
     title = models.CharField(max_length=200)
     author = models.CharField(max_length=200)
     isbn = models.CharField(max_length=13, blank=True)
     total_pages = models.IntegerField()
-    genre = models.CharField(max_length=100)
+    genre = models.CharField(max_length=20, choices=[
+        (code, name) for category, subcategories in GENRE_CHOICES 
+        for code, name in (subcategories if isinstance(subcategories, tuple) else [(category, subcategories)])
+    ])
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=2, choices=READING_STATUS, default='TB')
     cover_image = models.ImageField(upload_to='book_covers', blank=True)
@@ -32,6 +63,47 @@ class Book(models.Model):
 
     def __str__(self):
         return f"{self.title} by {self.author}"
+
+    def calculate_reading_progress(self):
+        """Calculate reading progress and update book status."""
+        # Get total pages read from all sessions
+        total_pages_read = ReadingSession.objects.filter(book=self).aggregate(
+            total_pages=models.Sum('pages_read'))['total_pages'] or 0
+        
+        # Calculate progress percentage
+        progress = min((total_pages_read / self.total_pages) * 100, 100) if self.total_pages > 0 else 0
+        
+        # Check if this is a new completion
+        was_not_completed = self.status != 'CO'
+        
+        # Update book status based on progress
+        if self.status != 'AB':  # Don't update if book is abandoned
+            if progress >= 100:
+                self.status = 'CO'  # Completed
+            elif progress > 0:
+                self.status = 'CR'  # Currently Reading
+            else:
+                self.status = 'TB'  # To Be Read
+        
+        # Return both progress and whether this was a new completion
+        return progress, (was_not_completed and self.status == 'CO')
+
+    def get_genre_display_name(self):
+        """Get the display name for the book's genre."""
+        for category, subcategories in self.GENRE_CHOICES:
+            if isinstance(subcategories, tuple):
+                for code, name in subcategories:
+                    if code == self.genre:
+                        return name
+        return self.get_genre_display()
+
+    def save(self, *args, **kwargs):
+        if not self.pk:  # New book
+            super().save(*args, **kwargs)
+        else:
+            # Calculate progress and update status before saving
+            self.calculate_reading_progress()
+            super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['-created_at']
@@ -47,6 +119,12 @@ class ReadingSession(models.Model):
 
     def duration(self):
         return self.end_time - self.start_time
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Update book progress after saving the session
+        self.book.calculate_reading_progress()
+        self.book.save()
 
     def __str__(self):
         return f"{self.user.username}'s session - {self.book.title} ({self.pages_read} pages)"

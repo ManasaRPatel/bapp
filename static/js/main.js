@@ -12,25 +12,67 @@ function initReadingProgressChart(elementId, data) {
     const ctx = document.getElementById(elementId);
     if (!ctx) return;
 
+    const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(0, 123, 255, 0.4)');
+    gradient.addColorStop(1, 'rgba(0, 123, 255, 0.0)');
+
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: data.dates,
             datasets: [{
-                label: 'Pages Read',
-                data: data.pages,
+                label: 'Pages Read (Log Scale)',
+                data: data.log_pages,
                 borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                backgroundColor: gradient,
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#007bff',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2
+            }, {
+                label: 'Actual Pages Read',
+                data: data.pages,
+                borderColor: '#28a745',
+                backgroundColor: 'transparent',
+                fill: false,
+                tension: 0.4,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                hidden: true
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
+            aspectRatio: 2,
             plugins: {
                 legend: {
-                    display: false
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#007bff',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            const datasetLabel = context.dataset.label;
+                            const value = context.raw;
+                            if (datasetLabel.includes('Log')) {
+                                return `${datasetLabel}: ${value.toFixed(2)}`;
+                            }
+                            return `${datasetLabel}: ${value} pages`;
+                        }
+                    }
                 }
             },
             scales: {
@@ -38,7 +80,25 @@ function initReadingProgressChart(elementId, data) {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Pages'
+                        text: 'Reading Progress',
+                        font: {
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Date',
+                        font: {
+                            weight: 'bold'
+                        }
                     }
                 }
             }
@@ -150,4 +210,42 @@ document.addEventListener('DOMContentLoaded', function() {
             stopButton.style.display = 'none';
         });
     }
-}); 
+
+    // Add event listener for reading session form
+    const readingSessionForm = document.getElementById('reading-session-form');
+    if (readingSessionForm) {
+        readingSessionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        });
+    }
+});
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+} 

@@ -3,64 +3,124 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.http import JsonResponse
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Avg
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta, datetime
 from .models import Book, ReadingSession, ReadingGoal, UserProfile
 from .forms import (UserRegistrationForm, UserProfileForm, BookForm,
                    ReadingSessionForm, ReadingGoalForm)
+import math
+from django.urls import reverse
 
 def home(request):
-    if request.user.is_authenticated:
-        return redirect('dashboard')
-    return render(request, 'reading_tracker/home.html')
+    return render(request, 'reading_tracker/welcome.html')
+
+
+# ...existing code...
 
 def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
+            # Create a UserProfile for the new user
+            UserProfile.objects.create(user=user)
             login(request, user)
             return redirect('dashboard')
     else:
         form = UserRegistrationForm()
     return render(request, 'registration/register.html', {'form': form})
+# ...existing code...
 
 @login_required
 def dashboard(request):
-    # Get user's reading statistics
-    total_books = Book.objects.filter(user=request.user).count()
-    books_completed = Book.objects.filter(user=request.user, status='CO').count()
-    current_books = Book.objects.filter(user=request.user, status='CR')
+    try:
+        # Get user's reading statistics
+        total_books = Book.objects.filter(user=request.user).count()
+        books_completed = Book.objects.filter(user=request.user, status='CO').count()
+        
+        # Get active reading goal
+        active_goal = ReadingGoal.objects.filter(
+            user=request.user,
+            start_date__lte=timezone.now().date(),
+            end_date__gte=timezone.now().date()
+        ).first()
+        
+        # Calculate total pages read
+        total_pages = ReadingSession.objects.filter(user=request.user).aggregate(
+            total=Sum('pages_read'))['total'] or 0
+        
+        # Get currently reading book with progress
+        current_book = Book.objects.filter(user=request.user, status='CR').first()
+        if current_book:
+            # Calculate reading progress
+            pages_read = ReadingSession.objects.filter(
+                book=current_book
+            ).aggregate(total=Sum('pages_read'))['total'] or 0
+            
+            current_book.pages_read = pages_read
+            current_book.progress = round((pages_read / current_book.total_pages) * 100) if current_book.total_pages > 0 else 0
+        
+        context = {
+            'total_books': total_books,
+            'books_completed': books_completed,
+            'total_pages': total_pages,
+            'active_goal': active_goal,
+            'current_book': current_book
+        }
+        
+        print("Dashboard Context:", context)  # Debug print
+        return render(request, 'reading_tracker/dashboard.html', context)
+        
+    except Exception as e:
+        print(f"Dashboard Error: {str(e)}")  # Debug print
+        messages.error(request, "There was an error loading the dashboard. Please try again.")
+        context = {
+            'total_books': 0,
+            'books_completed': 0,
+            'total_pages': 0,
+            'active_goal': None,
+            'current_book': None
+        }
+        return render(request, 'reading_tracker/dashboard.html', context)
+
+@login_required
+def profile(request):
+    user_profile = get_object_or_404(UserProfile, user=request.user)
+    books = Book.objects.filter(user=request.user)
+    reading_sessions = ReadingSession.objects.filter(user=request.user).order_by('-start_time')
     
-    # Calculate pages read in the last 30 days
-    thirty_days_ago = timezone.now() - timedelta(days=30)
-    recent_sessions = ReadingSession.objects.filter(
-        user=request.user,
-        start_time__gte=thirty_days_ago
-    )
-    pages_last_30_days = recent_sessions.aggregate(Sum('pages_read'))['pages_read__sum'] or 0
+    # Calculate reading statistics
+    total_books = books.count()
+    books_completed = books.filter(status='CO').count()
+    total_pages_read = reading_sessions.aggregate(total=Sum('pages_read'))['total'] or 0
+    
+    # Prepare reading progress data for the chart
+    last_30_days = reading_sessions.filter(
+        start_time__gte=timezone.now() - timezone.timedelta(days=30)
+    ).values('start_time__date').annotate(
+        pages=Sum('pages_read')
+    ).order_by('start_time__date')
+    
+    chart_data = {
+        'dates': [session['start_time__date'].strftime('%Y-%m-%d') for session in last_30_days],
+        'pages': [session['pages'] for session in last_30_days]
+    }
     
     # Get active reading goals
     active_goals = ReadingGoal.objects.filter(
         user=request.user,
-        start_date__lte=timezone.now().date(),
         end_date__gte=timezone.now().date()
     )
     
-    context = {
+    return render(request, 'reading_tracker/profile.html', {
+        'profile': user_profile,
         'total_books': total_books,
         'books_completed': books_completed,
-        'current_books': current_books,
-        'pages_last_30_days': pages_last_30_days,
-        'active_goals': active_goals,
-    }
-    return render(request, 'reading_tracker/dashboard.html', context)
-
-@login_required
-def profile(request):
-    profile = get_object_or_404(UserProfile, user=request.user)
-    return render(request, 'reading_tracker/profile.html', {'profile': profile})
+        'pages_read': total_pages_read,
+        'chart_data': chart_data,
+        'active_goals': active_goals
+    })
 
 @login_required
 def edit_profile(request):
@@ -98,9 +158,25 @@ def add_book(request):
 def book_detail(request, pk):
     book = get_object_or_404(Book, pk=pk, user=request.user)
     sessions = ReadingSession.objects.filter(book=book).order_by('-start_time')
+    
+    # Calculate reading progress
+    total_pages_read = sessions.aggregate(Sum('pages_read'))['pages_read__sum'] or 0
+    reading_progress = (total_pages_read / book.total_pages) * 100 if book.total_pages > 0 else 0
+    
+    # Get reading sessions data for the chart
+    sessions_data = list(sessions.values('start_time', 'pages_read'))
+    chart_data = {
+        'dates': [session['start_time'].strftime('%Y-%m-%d') for session in sessions_data],
+        'pages': [session['pages_read'] for session in sessions_data]
+    }
+    
     return render(request, 'reading_tracker/book_detail.html', {
         'book': book,
-        'sessions': sessions
+        'sessions': sessions,
+        'reading_progress': reading_progress,
+        'pages_read': total_pages_read,
+        'chart_data': chart_data,
+        'just_completed': request.GET.get('just_completed') == 'true'
     })
 
 @login_required
@@ -109,8 +185,15 @@ def edit_book(request, pk):
     if request.method == 'POST':
         form = BookForm(request.POST, request.FILES, instance=book)
         if form.is_valid():
-            form.save()
+            # Check if the book was completed
+            old_status = book.status
+            book = form.save(commit=False)
+            just_completed = old_status != 'CO' and book.status == 'CO'
+            book.save()
+            
             messages.success(request, 'Book updated successfully.')
+            if just_completed:
+                return redirect(f'/books/{pk}/?just_completed=true')
             return redirect('book_detail', pk=pk)
     else:
         form = BookForm(instance=book)
@@ -120,25 +203,62 @@ def edit_book(request, pk):
 def delete_book(request, pk):
     book = get_object_or_404(Book, pk=pk, user=request.user)
     if request.method == 'POST':
+        book_title = book.title
         book.delete()
-        messages.success(request, 'Book deleted successfully.')
+        messages.success(request, f'"{book_title}" has been deleted successfully.')
+        
+        # Return JSON response if it's an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': f'"{book_title}" has been deleted successfully.',
+                'redirect_url': reverse('book_list')
+            })
+        
+        # For regular requests, redirect to book list
         return redirect('book_list')
+    
+    # GET request - show confirmation page
     return render(request, 'reading_tracker/delete_book.html', {'book': book})
 
 @login_required
-def add_reading_session(request):
+def add_reading_session(request, book_id):
+    book = get_object_or_404(Book, id=book_id, user=request.user)
+    
     if request.method == 'POST':
         form = ReadingSessionForm(request.POST)
         if form.is_valid():
             session = form.save(commit=False)
             session.user = request.user
-            session.save()
-            messages.success(request, 'Reading session added successfully.')
-            return redirect('book_detail', pk=session.book.pk)
+            session.book = book
+            
+            # Validate pages read against book's total pages
+            total_pages_read = ReadingSession.objects.filter(book=book).aggregate(
+                total=Sum('pages_read'))['total'] or 0
+            if total_pages_read + session.pages_read > book.total_pages:
+                form.add_error('pages_read', 
+                    f'Total pages read would exceed book\'s total pages ({book.total_pages})')
+            else:
+                session.save()
+                
+                # Update book progress and status
+                progress, just_completed = book.calculate_reading_progress()
+                book.save()
+                
+                messages.success(request, 'Reading session added successfully.')
+                if just_completed:
+                    return redirect(f'/books/{book_id}/?just_completed=true')
+                return redirect('book_detail', pk=book_id)
     else:
-        form = ReadingSessionForm()
-        form.fields['book'].queryset = Book.objects.filter(user=request.user)
-    return render(request, 'reading_tracker/add_session.html', {'form': form})
+        # Pre-fill the start time with current time
+        form = ReadingSessionForm(initial={
+            'start_time': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+        })
+    
+    return render(request, 'reading_tracker/add_reading_session.html', {
+        'form': form,
+        'book': book
+    })
 
 @login_required
 def session_detail(request, pk):
@@ -216,88 +336,95 @@ def reading_progress(request):
 
 @login_required
 def reading_progress_data(request):
+    """API endpoint for reading progress charts"""
     days = int(request.GET.get('days', 30))
     start_date = timezone.now().date() - timedelta(days=days)
     
-    # Get completed books by date
-    completed_books = Book.objects.filter(
+    # Get daily pages read
+    daily_pages = ReadingSession.objects.filter(
         user=request.user,
-        status='CO',
-        updated_at__date__gte=start_date
-    ).order_by('updated_at')
+        start_time__date__gte=start_date
+    ).values('start_time__date').annotate(
+        pages=Sum('pages_read')
+    ).order_by('start_time__date')
     
-    # Create a dictionary of dates and cumulative books completed
+    # Fill in missing dates with 0 pages
     dates = []
-    books_read = []
-    cumulative_books = 0
+    daily_values = []
+    total_pages = 0
     
     current_date = start_date
-    end_date = timezone.now().date()
+    daily_data = {item['start_time__date']: item['pages'] for item in daily_pages}
     
-    while current_date <= end_date:
-        books_on_date = completed_books.filter(updated_at__date=current_date).count()
-        cumulative_books += books_on_date
-        
+    while current_date <= timezone.now().date():
         dates.append(current_date.strftime('%Y-%m-%d'))
-        books_read.append(cumulative_books)
+        pages = daily_data.get(current_date, 0)
+        daily_values.append(pages)
+        total_pages += pages
         current_date += timedelta(days=1)
     
     # Calculate average pages per day
-    reading_sessions = ReadingSession.objects.filter(
-        user=request.user,
-        start_time__date__gte=start_date
-    )
-    total_pages = reading_sessions.aggregate(Sum('pages_read'))['pages_read__sum'] or 0
-    avg_pages_per_day = round(total_pages / days, 1) if total_pages > 0 else 0
-    
-    # Get total completed books
-    total_books_completed = Book.objects.filter(
-        user=request.user,
-        status='CO'
-    ).count()
+    avg_pages = round(total_pages / len(dates), 1) if dates else 0
     
     return JsonResponse({
         'dates': dates,
-        'books_read': books_read,
-        'avg_pages_per_day': avg_pages_per_day,
-        'total_books_completed': total_books_completed
+        'daily_pages': daily_values,
+        'total_pages': total_pages,
+        'avg_pages_per_day': avg_pages
     })
 
 @login_required
 def book_status_data(request):
-    book_stats = Book.objects.filter(user=request.user).values('status').annotate(
+    """API endpoint for book status chart"""
+    status_counts = Book.objects.filter(user=request.user).values('status').annotate(
         count=Count('status')
     )
     
-    status_counts = {
-        'currently_reading': 0,
-        'completed': 0,
-        'abandoned': 0,
-        'to_be_read': 0
+    # Initialize all possible statuses with 0
+    data = {
+        'labels': ['Completed', 'Currently Reading', 'Abandoned'],
+        'counts': [0, 0, 0],
+        'colors': ['#4BC0C0', '#FF9F40', '#FF6384']  # Green, Orange, Red
     }
     
-    for stat in book_stats:
-        if stat['status'] == 'CR':
-            status_counts['currently_reading'] = stat['count']
-        elif stat['status'] == 'CO':
-            status_counts['completed'] = stat['count']
-        elif stat['status'] == 'AB':
-            status_counts['abandoned'] = stat['count']
-        elif stat['status'] == 'TB':
-            status_counts['to_be_read'] = stat['count']
+    # Map database status codes to array indices
+    status_map = {
+        'CO': 0,  # Completed
+        'CR': 1,  # Currently Reading
+        'AB': 2   # Abandoned
+    }
     
-    return JsonResponse(status_counts)
+    # Fill in actual counts
+    for status in status_counts:
+        if status['status'] in status_map:
+            data['counts'][status_map[status['status']]] = status['count']
+    
+    return JsonResponse(data)
 
 @login_required
-def genre_distribution_data(request):
-    # Get genre distribution for user's books
-    genres = Book.objects.filter(user=request.user).values('genre').annotate(
-        count=Count('genre')
+def genre_distribution(request):
+    """API endpoint for genre distribution chart"""
+    books = Book.objects.filter(user=request.user)
+    
+    # Get genre counts
+    genre_stats = books.values('genre').annotate(
+        count=Count('id')
     ).order_by('-count')
     
+    # Prepare data for chart
+    genres = []
+    counts = []
+    colors = ['#36A2EB', '#4BC0C0', '#FF9F40', '#FF6384', '#9966FF', '#FFCD56']
+    
+    for i, stat in enumerate(genre_stats):
+        genre_name = dict(Book._meta.get_field('genre').choices)[stat['genre']]
+        genres.append(genre_name)
+        counts.append(stat['count'])
+    
     return JsonResponse({
-        'genres': [genre['genre'] for genre in genres],
-        'counts': [genre['count'] for genre in genres]
+        'labels': genres,
+        'data': counts,
+        'colors': colors[:len(genres)]
     })
 
 @login_required
@@ -386,30 +513,106 @@ def analytics_dashboard(request):
     return render(request, 'reading_tracker/analytics.html', context)
 
 @login_required
-def genre_distribution(request):
-    genre_data = Book.objects.values('genre').annotate(count=Count('id'))
-    genres = [entry['genre'] for entry in genre_data]
-    counts = [entry['count'] for entry in genre_data]
-    return JsonResponse({'genres': genres, 'counts': counts})
-
-@login_required
 def user_logout(request):
     logout(request)
     messages.success(request, "You have been logged out.")
     return redirect('login')
 
 @login_required
-def reading_activity_api(request):
-    # Get dates with reading activity for the current user
-    user = request.user
-    dates = []
+def reading_activity_data(request):
+    """API endpoint for reading activity heatmap"""
+    try:
+        # Get data for the last 365 days
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=365)
+        
+        # Get daily reading activity
+        daily_activity = ReadingSession.objects.filter(
+            user=request.user,
+            start_time__date__gte=start_date
+        ).values('start_time__date').annotate(
+            pages=Sum('pages_read')
+        )
+        
+        # Convert to the format expected by Cal-Heatmap
+        activity_data = {}
+        current_streak = 0
+        longest_streak = 0
+        temp_streak = 0
+        last_active_date = None
+        
+        # Process all dates in range
+        current_date = start_date
+        while current_date <= end_date:
+            # Find pages read for this date
+            date_activity = next(
+                (item for item in daily_activity if item['start_time__date'] == current_date),
+                None
+            )
+            pages = date_activity['pages'] if date_activity else 0
+            
+            # Add to activity data if there was reading activity
+            if pages > 0:
+                # Convert date to Unix timestamp (seconds since epoch)
+                timestamp = int(datetime.combine(current_date, datetime.min.time()).timestamp())
+                activity_data[str(timestamp)] = pages
+                
+                # Update streak information
+                if last_active_date is None or (current_date - last_active_date).days == 1:
+                    temp_streak += 1
+                else:
+                    temp_streak = 1
+                
+                if temp_streak > longest_streak:
+                    longest_streak = temp_streak
+                
+                last_active_date = current_date
+                
+                # Update current streak if it includes today
+                if current_date == end_date:
+                    current_streak = temp_streak
+            else:
+                if current_date == end_date and last_active_date == current_date - timedelta(days=1):
+                    current_streak = temp_streak
+                temp_streak = 0
+            
+            current_date += timedelta(days=1)
+        
+        print("Activity Data:", activity_data)  # Debug print
+        
+        return JsonResponse({
+            'current_streak': current_streak,
+            'longest_streak': longest_streak,
+            'data': activity_data
+        })
+    except Exception as e:
+        print(f"Reading Activity Error: {str(e)}")  # Debug print
+        return JsonResponse({
+            'current_streak': 0,
+            'longest_streak': 0,
+            'data': {}
+        })
+
+@login_required
+def mark_book_completed(request, pk):
+    book = get_object_or_404(Book, pk=pk, user=request.user)
+    if request.method == 'POST':
+        # Update book status to completed
+        book.status = 'CO'
+        book.save()
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'book_title': book.title,
+                'redirect_url': reverse('dashboard'),
+                'status': 'CO'
+            })
+        
+        # For regular requests, redirect to book detail with completion flag
+        messages.success(request, f'"{book.title}" has been marked as completed!')
+        return redirect(f'/books/{pk}/?just_completed=true')
     
-    # Get all unique dates with reading sessions
-    reading_sessions = ReadingSession.objects.filter(
-        user=user
-    ).values_list('date', flat=True).distinct()
-    
-    # Convert to YYYY-MM-DD format
-    dates = [session.strftime('%Y-%m-%d') for session in reading_sessions]
-    
-    return JsonResponse({'dates': dates})
+    # GET request - show confirmation page
+    return render(request, 'reading_tracker/mark_book_completed.html', {'book': book})

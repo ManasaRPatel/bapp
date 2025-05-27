@@ -2,410 +2,280 @@
 
 {% block title %}Dashboard - Book Reading Habit Analyzer{% endblock %}
 
+{% block extra_css %}
+<style>
+body {
+  background-color: #f7f9fc;
+  font-family: 'Segoe UI', sans-serif;
+  min-width: 1024px;
+}
+
+.dashboard-container {
+  width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+/* Header */
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.dashboard-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+}
+
+/* Stats cards */
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.stat-box {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  text-align: center;
+  width: 280px;
+}
+
+.stat-box h5 {
+  font-size: 16px;
+  color: #4a5568;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.stat-box .stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: #2b6cb0;
+  line-height: 1.2;
+}
+
+/* Charts section in single box */
+.chart-section {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  padding: 32px;
+  margin-bottom: 40px;
+}
+
+.chart-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.charts-row {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.chart-box {
+  background: #f9fafb;
+  border-radius: 12px;
+  flex: 1;
+  min-width: 500px;
+  max-width: 600px;
+  padding: 24px;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+}
+
+.chart-box h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.chart-container {
+  height: 300px;
+  position: relative;
+}
+
+/* Info cards */
+.info-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.info-box {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  flex: 1;
+  min-width: 400px;
+}
+
+.info-box.reading {
+  border-left: 6px solid #4299e1;
+}
+
+.info-box.goal {
+  border-left: 6px solid #48bb78;
+}
+
+.info-box h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 1rem;
+}
+
+.info-box p {
+  font-size: 16px;
+  color: #4a5568;
+  margin: 0.5rem 0;
+}
+
+.info-box strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+</style>
+{% endblock %}
+
 {% block content %}
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1>📚 Reading Dashboard</h1>
+  </div>
 
-<div class="container">
-    <h1 class="mb-4">Reading Dashboard</h1>
-    
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="stat-card">
-                <h3>Total Books</h3>
-                <p class="h2 mb-0">{{ total_books }}</p>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <h3>Books Completed</h3>
-                <p class="h2 mb-0">{{ books_completed }}</p>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <h3>Currently Reading</h3>
-                <p class="h2 mb-0">{{ current_books.count }}</p>
-            </div>
-        </div>
+  <div class="stats-row">
+    <div class="stat-box">
+      <h5>Books Completed Reading</h5>
+      <div class="stat-value">{{ books_completed }}</div>
     </div>
-
-    <!-- Charts Row -->
-    <div class="row mb-4">
-        <!-- Reading Progress Chart -->
-        <div class="col-md-6 d-flex justify-content-center">
-            <div class="card shadow-sm" style="width: 100%; max-width: 350px;">
-                <div class="card-body">
-                    <h4 class="card-title text-center mb-3" style="font-size: 1.1rem; font-weight: 600;">Reading Progress</h4>
-                    <div class="mb-3">
-                        <select id="timeRange" class="form-select">
-                            <option value="7" selected>Last 7 Days</option>
-                            <option value="30">Last 30 Days</option>
-                            <option value="90">Last 3 Months</option>
-                            <option value="365">Last Year</option>
-                        </select>
-                    </div>
-                    <canvas id="readingProgressChart" width="300" height="180"></canvas>
-                </div>
-            </div>
-        </div>
-        <!-- Book Status Overview Chart -->
-        <div class="col-md-6 d-flex justify-content-center">
-            <div class="card shadow-sm" style="width: 100%; max-width: 350px;">
-                <div class="card-body">
-                    <h4 class="card-title text-center mb-3" style="font-size: 1.1rem; font-weight: 600;">Book Status Overview</h4>
-                    <canvas id="bookStatusChart" width="300" height="180"></canvas>
-                </div>
-            </div>
-        </div>
+    <div class="stat-box">
+      <h5>Total Books Read</h5>
+      <div class="stat-value">{{ total_books }}</div>
     </div>
-
-    <!-- Reading Pace and Genre Distribution -->
-    <div class="row mb-4">
-        <!-- Reading Pace Card -->
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h3 class="card-title">Reading Pace</h3>
-                    <div class="text-center">
-                        <h4 class="mt-3">Average Pages per Day</h4>
-                        <h2 id="avgPagesPerDay">-</h2>
-                        <h4 class="mt-3">Books Completed</h4>
-                        <h2 id="booksCompleted">-</h2>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Genre Distribution Donut Chart -->
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h3 class="card-title text-center">Books by Genre</h3>
-                    <div style="width: 100%; max-width: 350px; margin: 0 auto;">
-                        <canvas id="genreDistributionChart" width="300" height="180"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="stat-box">
+      <h5>Total Pages Read</h5>
+      <div class="stat-value">{{ total_pages }}</div>
     </div>
+  </div>
 
-    <!-- Current Books and Goals -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Currently Reading</h5>
-                    {% if current_books %}
-                        <div class="list-group">
-                            {% for book in current_books %}
-                                <a href="{% url 'book_detail' book.pk %}" class="list-group-item list-group-item-action">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">{{ book.title }}</h6>
-                                        <small>{{ book.genre }}</small>
-                                    </div>
-                                    <p class="mb-1">by {{ book.author }}</p>
-                                </a>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="text-muted">No books currently being read.</p>
-                        <a href="{% url 'add_book' %}" class="btn btn-primary">Add a Book</a>
-                    {% endif %}
-                </div>
-            </div>
+  <!-- CHARTS IN ONE CONTAINER -->
+  <div class="chart-section">
+    <h2>📊 Reading Overview</h2>
+    <div class="charts-row">
+      <div class="chart-box">
+        <h4>Genre Distribution</h4>
+        <div class="chart-container">
+          <canvas id="genreChart"></canvas>
         </div>
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Active Goals</h5>
-                    {% if active_goals %}
-                        {% for goal in active_goals %}
-                            <div class="goal-progress mb-3">
-                                <h6>{{ goal.get_goal_type_display }} Goal</h6>
-                                <div class="progress">
-                                    <div class="progress-bar" role="progressbar" style="width: {{ goal.progress }}%"
-                                         aria-valuenow="{{ goal.progress }}" aria-valuemin="0" aria-valuemax="100">
-                                    </div>
-                                </div>
-                                <span class="percentage">{{ goal.progress|floatformat:1 }}%</span>
-                                <p class="mb-0">
-                                    Target: {{ goal.target_pages }} pages
-                                    {% if goal.target_books %}
-                                        and {{ goal.target_books }} books
-                                    {% endif %}
-                                </p>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <p class="text-muted">No active reading goals.</p>
-                        <a href="{% url 'add_goal' %}" class="btn btn-primary">Set a Goal</a>
-                    {% endif %}
-                </div>
-            </div>
+      </div>
+      <div class="chart-box">
+        <h4>Book Status</h4>
+        <div class="chart-container">
+          <canvas id="statusChart"></canvas>
         </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Reading Streak Calendar -->
-    
+  <div class="info-row">
+    {% if current_book %}
+    <div class="info-box reading">
+      <h4>📖 Currently Reading</h4>
+      <p><strong>Title:</strong> {{ current_book.title }}</p>
+      <p><strong>Author:</strong> {{ current_book.author }}</p>
+    </div>
+    {% endif %}
+
+    {% if active_goal %}
+    <div class="info-box goal">
+      <h4>🎯 Reading Goal</h4>
+      <p>Target: <strong>{{ active_goal.target_pages }}</strong> pages by <strong>{{ active_goal.end_date|date:"M d, Y" }}</strong></p>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Genre Distribution Donut Chart
-    fetch('/api/genre-distribution/')
-        .then(response => response.json())
-        .then(data => {
-            const ctx = document.getElementById('genreDistributionChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: data.genres,
-                    datasets: [{
-                        data: data.counts,
-                        backgroundColor: [
-                            '#36a2eb',
-                            '#4bc0c0',
-                            '#ff6384',
-                            '#ffcd56',
-                            '#9966ff',
-                            '#c9cbcf'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Books by Genre'
-                        }
-                    }
-                }
-            });
-        });
-
-    // Charts
-    let readingProgressChart = null;
-    let bookStatusChart = null;
-    let bookStatusBarChart = null;
-
-    function updateCharts(days) {
-        // Reading Progress Chart
-        fetch(`/api/reading-progress/?days=${days}`)
-            .then(response => response.json())
-            .then(data => {
-                if (readingProgressChart) {
-                    readingProgressChart.destroy();
-                }
-                readingProgressChart = new Chart(
-                    document.getElementById('readingProgressChart'),
-                    {
-                        type: 'line',
-                        data: {
-                            labels: data.dates,
-                            datasets: [{
-                                label: 'Books Read',
-                                data: data.books_read,
-                                borderColor: 'rgb(75, 192, 192)',
-                                tension: 0.1,
-                                fill: false
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                        stepSize: 1
-                                    }
-                                }
-                            },
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: 'Books Read Over Time'
-                                }
-                            }
-                        }
-                    }
-                );
-                // Update statistics
-                document.getElementById('avgPagesPerDay').textContent = data.avg_pages_per_day;
-                document.getElementById('booksCompleted').textContent = data.total_books_completed;
-            });
-
-        // Book Status Data
-        fetch('/api/book-status/')
-            .then(response => response.json())
-            .then(data => {
-                if (bookStatusChart) {
-                    bookStatusChart.destroy();
-                }
-                if (bookStatusBarChart) {
-                    bookStatusBarChart.destroy();
-                }
-                // Doughnut Chart
-                bookStatusChart = new Chart(
-                    document.getElementById('bookStatusChart'),
-                    {
-                        type: 'bar',
-                        data: {
-                            labels: ['Currently Reading', 'Completed', 'Abandoned', 'To Be Read'],
-                            datasets: [{
-                                data: [
-                                    data.currently_reading,
-                                    data.completed,
-                                    data.abandoned,
-                                    data.to_be_read
-                                ],
-                                backgroundColor: [
-                                    '#36a2eb',
-                                    '#4bc0c0',
-                                    '#ff6384',
-                                    '#ffcd56'
-                                ]
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: {
-                                        font: {
-                                            size: 12
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                );
-            });
-    }
-
-    // Handle time range changes
-    document.getElementById('timeRange').addEventListener('change', function(e) {
-        updateCharts(e.target.value);
+document.addEventListener('DOMContentLoaded', function () {
+  fetch('/api/genre-distribution/')
+    .then(res => res.json())
+    .then(data => {
+      const ctx = document.getElementById('genreChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.data,
+            backgroundColor: data.colors,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                font: { size: 14 }
+              }
+            }
+          }
+        }
+      });
     });
 
-    // Initial load with 7 days
-    updateCharts(7);
+  fetch('/api/book-status/')
+    .then(res => res.json())
+    .then(data => {
+      const ctx = document.getElementById('statusChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.counts,
+            backgroundColor: data.colors,
+            borderRadius: 6,
+            maxBarThickness: 60
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, font: { size: 14 } },
+              grid: { display: false }
+            },
+            x: {
+              ticks: { font: { size: 14 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    });
 });
 </script>
-<script>
-function renderStreakCalendar(activityDates) {
-  const container = document.getElementById('streakCalendar');
-  container.innerHTML = '';
-
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  weekdays.forEach(day => {
-    const dayHeader = document.createElement('div');
-    dayHeader.textContent = day;
-    dayHeader.style.fontWeight = 'bold';
-    container.appendChild(dayHeader);
-  });
-
-  for (let i = 0; i < firstDay; i++) {
-    const emptyCell = document.createElement('div');
-    emptyCell.classList.add('day', 'empty');
-    container.appendChild(emptyCell);
-  }
-
-  const formatDate = d => d.toISOString().split('T')[0];
-
-  // Compute current streak
-  let streakCount = 0;
-  for (let i = 0; i < activityDates.length; i++) {
-    if (activityDates[i] === formatDate(new Date(Date.now() - i * 86400000))) {
-      streakCount++;
-    } else {
-      break;
-    }
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateObj = new Date(year, month, day);
-    const dateStr = formatDate(dateObj);
-
-    const dayCell = document.createElement('div');
-    dayCell.classList.add('day');
-    dayCell.textContent = day;
-
-    if (dateStr === formatDate(new Date())) {
-      dayCell.classList.add('today');
-    }
-
-    if (activityDates.includes(dateStr)) {
-      dayCell.classList.add('active');
-    }
-
-    const diffDays = (new Date().setHours(0, 0, 0, 0) - dateObj.setHours(0, 0, 0, 0)) / 86400000;
-    if (activityDates.includes(dateStr) && diffDays >= 0 && diffDays < streakCount) {
-      dayCell.classList.add('streak');
-    }
-
-    container.appendChild(dayCell);
-  }
-}
-</script>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-#streakCalendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  font-family: Arial, sans-serif;
-  user-select: none;
-}
-
-#streakCalendar .day {
-  border: 1px solid #ddd;
-  padding: 10px;
-  text-align: center;
-  cursor: default;
-  border-radius: 4px;
-}
-
-#streakCalendar .day.today {
-  border-color: #4bc0c0;
-  font-weight: bold;
-}
-
-#streakCalendar .day.active {
-  background-color: #4bc0c0;
-  color: white;
-}
-
-#streakCalendar .day.streak {
-  background-color: #36a2eb;
-  color: white;
-}
-
-#streakCalendar .day.empty {
-  background-color: transparent;
-  border: none;
-  cursor: default;
-}
-</style>
 {% endblock %}

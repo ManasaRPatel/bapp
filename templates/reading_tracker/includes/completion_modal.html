@@ -1,0 +1,196 @@
+<!-- Completion Modal -->
+<div id="completionModal" class="modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content celebration-modal">
+            <div class="modal-body text-center p-4">
+                <div class="emoji mb-3">🎉</div>
+                <h2 class="celebration-title mb-3">Congratulations!</h2>
+                <p class="celebration-message mb-4">
+                    You've finished reading<br>
+                    <strong id="completedBookTitle"></strong>
+                </p>
+                <div class="celebration-buttons">
+                    <button type="button" class="btn btn-primary celebration-button me-2" onclick="shareCompletion()">
+                        Share Achievement
+                    </button>
+                    <button type="button" class="btn btn-secondary celebration-button" data-bs-dismiss="modal">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.celebration-modal {
+    background: white;
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.celebration-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.celebration-message {
+    font-size: 1.2rem;
+    color: #4a5568;
+}
+
+.emoji {
+    font-size: 4rem;
+}
+
+.celebration-button {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: transform 0.2s ease;
+}
+
+.celebration-button:hover {
+    transform: translateY(-2px);
+}
+
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+}
+
+.modal.fade:not(.show) .modal-dialog {
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script>
+let completionModal = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the modal
+    completionModal = new bootstrap.Modal(document.getElementById('completionModal'), {
+        keyboard: false,
+        backdrop: 'static'
+    });
+});
+
+function triggerCompletionCelebration(bookTitle) {
+    console.log('Triggering celebration for:', bookTitle); // Debug log
+    
+    // Set the book title in the modal
+    document.getElementById('completedBookTitle').textContent = bookTitle;
+    
+    // Show the modal using the stored reference
+    if (completionModal) {
+        completionModal.show();
+    } else {
+        console.error('Modal not initialized'); // Debug log
+        completionModal = new bootstrap.Modal(document.getElementById('completionModal'));
+        completionModal.show();
+    }
+    
+    // Trigger initial confetti burst
+    confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+    });
+
+    // Add more confetti bursts
+    setTimeout(() => {
+        confetti({
+            particleCount: 50,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 }
+        });
+    }, 250);
+
+    setTimeout(() => {
+        confetti({
+            particleCount: 50,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 }
+        });
+    }, 400);
+}
+
+function shareCompletion() {
+    const bookTitle = document.getElementById('completedBookTitle').textContent;
+    const text = `I just finished reading "${bookTitle}"! 📚`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Book Completion',
+            text: text,
+            url: window.location.href
+        }).catch(console.error);
+    } else {
+        // Fallback - copy to clipboard
+        navigator.clipboard.writeText(text)
+            .then(() => alert('Achievement copied to clipboard!'))
+            .catch(console.error);
+    }
+}
+
+// Function to handle marking a book as completed via AJAX
+function markBookCompleted(bookId) {
+    console.log('Marking book as completed:', bookId); // Debug log
+    
+    fetch(`/books/${bookId}/complete/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Server response:', data); // Debug log
+        if (data.success) {
+            // Trigger the celebration
+            triggerCompletionCelebration(data.book_title);
+            
+            // Update the UI to reflect completion
+            const statusBadge = document.querySelector('.book-status-badge');
+            if (statusBadge) {
+                statusBadge.textContent = 'Completed';
+                statusBadge.classList.remove('bg-primary', 'bg-danger', 'bg-warning');
+                statusBadge.classList.add('bg-success');
+            }
+            
+            // Update status text if it exists
+            const statusText = document.querySelector('.book-status-text');
+            if (statusText) {
+                statusText.textContent = 'Completed';
+            }
+            
+            // Hide the completion button
+            const completeButton = document.querySelector('button[onclick^="markBookCompleted"]');
+            if (completeButton) {
+                completeButton.style.display = 'none';
+            }
+            
+            // Redirect to dashboard after a delay
+            setTimeout(() => {
+                window.location.href = data.redirect_url;
+            }, 3000);
+        } else {
+            console.error('Error in completion response:', data);
+            alert('There was an error marking the book as completed. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('There was an error marking the book as completed. Please try again.');
+    });
+}
+</script> 
