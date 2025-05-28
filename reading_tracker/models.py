@@ -149,34 +149,89 @@ class ReadingGoal(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_active(self):
-        return self.start_date <= timezone.now().date() <= self.end_date
+        """Check if the goal is currently active."""
+        today = timezone.now().date()
+        return self.start_date <= today <= self.end_date
+
+    def get_pages_read_in_period(self):
+        """Get total pages read within the goal period."""
+        try:
+            # Get all reading sessions within the period
+            sessions = ReadingSession.objects.filter(
+                user=self.user,
+                start_time__date__gte=self.start_date,
+                start_time__date__lte=self.end_date
+            )
+            
+            # Sum up pages read
+            total_pages = sessions.aggregate(
+                total=models.Sum('pages_read')
+            )['total']
+            
+            return total_pages or 0
+            
+        except Exception as e:
+            print(f"Error calculating pages read for goal {self.id}: {str(e)}")
+            print(f"Goal period: {self.start_date} to {self.end_date}")
+            return 0
+
+    def get_books_completed_in_period(self):
+        """Get number of books completed within the goal period."""
+        try:
+            # Get books that were completed within the period
+            completed_books = Book.objects.filter(
+                user=self.user,
+                status='CO',
+                readingsession__start_time__date__gte=self.start_date,
+                readingsession__start_time__date__lte=self.end_date
+            ).distinct()
+            
+            return completed_books.count()
+            
+        except Exception as e:
+            print(f"Error calculating completed books for goal {self.id}: {str(e)}")
+            print(f"Goal period: {self.start_date} to {self.end_date}")
+            return 0
 
     def progress(self):
-        if self.goal_type == 'D':
-            sessions = ReadingSession.objects.filter(
-                user=self.user,
-                start_time__date=timezone.now().date()
-            )
-        elif self.goal_type == 'W':
-            sessions = ReadingSession.objects.filter(
-                user=self.user,
-                start_time__week=timezone.now().isocalendar()[1],
-                start_time__year=timezone.now().year
-            )
-        elif self.goal_type == 'M':
-            sessions = ReadingSession.objects.filter(
-                user=self.user,
-                start_time__month=timezone.now().month,
-                start_time__year=timezone.now().year
-            )
-        else:  # Yearly
-            sessions = ReadingSession.objects.filter(
-                user=self.user,
-                start_time__year=timezone.now().year
-            )
-        
-        total_pages = sessions.aggregate(models.Sum('pages_read'))['pages_read__sum'] or 0
-        return (total_pages / self.target_pages) * 100 if self.target_pages > 0 else 0
+        """Calculate reading progress for pages within the goal period."""
+        try:
+            # Validate target pages
+            if not self.target_pages or self.target_pages <= 0:
+                print(f"Invalid target pages for goal {self.id}: {self.target_pages}")
+                return 0
+            
+            # Get total pages read
+            total_pages = self.get_pages_read_in_period()
+            print(f"Pages read for goal {self.id}: {total_pages} out of {self.target_pages}")
+            
+            # Calculate progress percentage
+            progress = (total_pages / self.target_pages) * 100
+            return min(round(progress, 1), 100)  # Round to 1 decimal and cap at 100%
+            
+        except Exception as e:
+            print(f"Error calculating progress for goal {self.id}: {str(e)}")
+            print(f"Target pages: {self.target_pages}")
+            return 0
+
+    def books_progress(self):
+        """Calculate book completion progress within the goal period."""
+        try:
+            # Validate target books
+            if not self.target_books or self.target_books <= 0:
+                return 0
+            
+            # Get completed books count
+            completed_books = self.get_books_completed_in_period()
+            
+            # Calculate progress percentage
+            progress = (completed_books / self.target_books) * 100
+            return min(round(progress, 1), 100)  # Round to 1 decimal and cap at 100%
+            
+        except Exception as e:
+            print(f"Error calculating books progress for goal {self.id}: {str(e)}")
+            print(f"Target books: {self.target_books}")
+            return 0
 
     def __str__(self):
         return f"{self.user.username}'s {self.get_goal_type_display()} goal"

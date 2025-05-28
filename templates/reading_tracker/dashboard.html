@@ -108,12 +108,6 @@ body {
 }
 
 /* Info cards */
-.info-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
 .info-box {
   background: #ffffff;
   border-radius: 12px;
@@ -147,6 +141,71 @@ body {
 .info-box strong {
   color: #2d3748;
   font-weight: 600;
+}
+
+.progress {
+  background-color: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  transition: width 0.3s ease;
+}
+
+.progress-bar.bg-success {
+  background-color: #48bb78;
+}
+
+.progress-bar.bg-info {
+  background-color: #4299e1;
+}
+
+.btn-outline-primary {
+  color: #2b6cb0;
+  border-color: #2b6cb0;
+}
+
+.btn-outline-primary:hover {
+  background-color: #2b6cb0;
+  color: #ffffff;
+}
+
+.goal-details {
+  margin-top: 1rem;
+}
+
+.goal-stats {
+  background-color: #f7fafc;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.goal-targets {
+  padding: 0.5rem;
+  background-color: #f7fafc;
+  border-radius: 8px;
+}
+
+.goal-targets p {
+  margin-bottom: 0.25rem;
+}
+
+.goal-targets p:last-child {
+  margin-bottom: 0;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #718096;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0;
 }
 </style>
 {% endblock %}
@@ -203,7 +262,67 @@ body {
     {% if active_goal %}
     <div class="info-box goal">
       <h4>🎯 Reading Goal</h4>
-      <p>Target: <strong>{{ active_goal.target_pages }}</strong> pages by <strong>{{ active_goal.end_date|date:"M d, Y" }}</strong></p>
+      <!-- Debug info -->
+      <div class="alert alert-info">
+        <small>
+          Goal ID: {{ active_goal.id }}<br>
+          Period: {{ active_goal.start_date }} to {{ active_goal.end_date }}<br>
+          Target Pages: {{ active_goal.target_pages }}<br>
+          {% if active_goal.target_books %}Target Books: {{ active_goal.target_books }}{% endif %}
+        </small>
+      </div>
+      <div class="goal-details">
+        <div class="goal-targets mb-3">
+          <p class="mb-1">Pages Target: <strong>{{ active_goal.pages_read }} / {{ active_goal.target_pages }}</strong> pages</p>
+          {% if active_goal.target_books %}
+          <p class="mb-1">Books Target: <strong>{{ active_goal.books_completed }} / {{ active_goal.target_books }}</strong> books</p>
+          {% endif %}
+          <p class="text-muted">Goal ends on <strong>{{ active_goal.end_date|date:"M d, Y" }}</strong></p>
+        </div>
+        
+        <div class="progress">
+          <div class="progress-bar bg-success" role="progressbar" style="width: {{ active_goal.progress }}%" aria-valuenow="{{ active_goal.progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <p class="text-muted mb-2">Pages Progress: {{ active_goal.progress|floatformat:1 }}%</p>
+        
+        {% if active_goal.target_books %}
+        <div class="progress">
+          <div class="progress-bar bg-info" role="progressbar" style="width: {{ active_goal.books_progress }}%" aria-valuenow="{{ active_goal.books_progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <p class="text-muted mb-2">Books Progress: {{ active_goal.books_progress|floatformat:1 }}%</p>
+        {% endif %}
+        
+        <div class="goal-stats mt-3">
+          <div class="row">
+            <div class="col">
+              <p class="stat-label">Days Remaining</p>
+              <p class="stat-value">{{ active_goal.days_remaining }}</p>
+            </div>
+            <div class="col">
+              <p class="stat-label">Pages/Day Needed</p>
+              <p class="stat-value">{{ active_goal.pages_needed_per_day }}</p>
+            </div>
+            {% if active_goal.target_books and active_goal.books_remaining > 0 %}
+            <div class="col">
+              <p class="stat-label">Books to Go</p>
+              <p class="stat-value">{{ active_goal.books_remaining }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="mt-3">
+          <a href="{% url 'reading_goals' %}" class="btn btn-sm btn-outline-primary">Manage Goals</a>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="info-box goal">
+      <h4>🎯 Reading Goal</h4>
+      <p class="text-muted">No active reading goal set.</p>
+      <div class="mt-3">
+        <a href="{% url 'add_goal' %}" class="btn btn-sm btn-primary">Set a Goal</a>
+      </div>
     </div>
     {% endif %}
   </div>

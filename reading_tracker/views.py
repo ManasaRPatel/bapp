@@ -39,13 +39,6 @@ def dashboard(request):
         total_books = Book.objects.filter(user=request.user).count()
         books_completed = Book.objects.filter(user=request.user, status='CO').count()
         
-        # Get active reading goal
-        active_goal = ReadingGoal.objects.filter(
-            user=request.user,
-            start_date__lte=timezone.now().date(),
-            end_date__gte=timezone.now().date()
-        ).first()
-        
         # Calculate total pages read
         total_pages = ReadingSession.objects.filter(user=request.user).aggregate(
             total=Sum('pages_read'))['total'] or 0
@@ -61,6 +54,89 @@ def dashboard(request):
             current_book.pages_read = pages_read
             current_book.progress = round((pages_read / current_book.total_pages) * 100) if current_book.total_pages > 0 else 0
         
+        # Debug: Print all goals for this user
+        all_goals = ReadingGoal.objects.filter(user=request.user)
+        print("\nAll goals for user:")
+        for goal in all_goals:
+            print(f"Goal ID: {goal.id}")
+            print(f"Period: {goal.start_date} to {goal.end_date}")
+            print(f"Target Pages: {goal.target_pages}")
+            print(f"Target Books: {goal.target_books}")
+            print(f"Created At: {goal.created_at}")
+            print("---")
+        
+        # Get active reading goal - get the most recent one that's currently active
+        today = timezone.now().date()
+        print(f"\nToday's date: {today}")
+        
+        active_goals = ReadingGoal.objects.filter(
+            user=request.user,
+            start_date__lte=today,
+            end_date__gte=today
+        )
+        
+        print("\nActive goals found:")
+        for goal in active_goals:
+            print(f"Goal ID: {goal.id}")
+            print(f"Period: {goal.start_date} to {goal.end_date}")
+        
+        active_goal = active_goals.order_by('-created_at').first()
+        
+        print("\nSelected active goal:")
+        if active_goal:
+            print(f"Goal ID: {active_goal.id}")
+            print(f"Period: {active_goal.start_date} to {active_goal.end_date}")
+            print(f"Target Pages: {active_goal.target_pages}")
+            print(f"Target Books: {active_goal.target_books}")
+
+            try:
+                # Calculate days remaining
+                days_remaining = (active_goal.end_date - today).days
+                
+                # Get pages and books read in the goal period
+                pages_read_in_period = active_goal.get_pages_read_in_period()
+                books_completed_in_period = active_goal.get_books_completed_in_period()
+                
+                print(f"\nProgress calculations:")
+                print(f"Days remaining: {days_remaining}")
+                print(f"Pages read in period: {pages_read_in_period}")
+                print(f"Books completed in period: {books_completed_in_period}")
+                
+                # Calculate remaining targets
+                pages_remaining = max(0, active_goal.target_pages - pages_read_in_period)
+                books_remaining = max(0, active_goal.target_books - books_completed_in_period) if active_goal.target_books else 0
+                
+                # Calculate daily targets needed
+                pages_needed_per_day = math.ceil(pages_remaining / days_remaining) if days_remaining > 0 else 0
+                
+                # Calculate progress percentages
+                pages_progress = (pages_read_in_period / active_goal.target_pages * 100) if active_goal.target_pages > 0 else 0
+                books_progress = (books_completed_in_period / active_goal.target_books * 100) if active_goal.target_books > 0 else 0
+                
+                print(f"Pages progress: {pages_progress}%")
+                print(f"Books progress: {books_progress}%")
+                
+                # Add goal progress information
+                active_goal.days_remaining = days_remaining
+                active_goal.pages_read = pages_read_in_period
+                active_goal.pages_remaining = pages_remaining
+                active_goal.pages_needed_per_day = pages_needed_per_day
+                active_goal.books_completed = books_completed_in_period
+                active_goal.books_remaining = books_remaining
+                active_goal.progress = min(round(pages_progress, 1), 100)
+                active_goal.books_progress = min(round(books_progress, 1), 100)
+                
+            except Exception as e:
+                print(f"\nGoal Progress Error: {str(e)}")
+                print(f"Goal ID: {active_goal.id}")
+                print(f"Goal Period: {active_goal.start_date} to {active_goal.end_date}")
+                print(f"Target Pages: {active_goal.target_pages}")
+                print(f"Target Books: {active_goal.target_books}")
+                messages.error(request, "There was an error calculating goal progress. Please check your goal settings.")
+                active_goal = None
+        else:
+            print("No active goal found")
+        
         context = {
             'total_books': total_books,
             'books_completed': books_completed,
@@ -69,11 +145,13 @@ def dashboard(request):
             'current_book': current_book
         }
         
-        print("Dashboard Context:", context)  # Debug print
+        print("\nContext being sent to template:")
+        print(f"Active goal in context: {'Yes' if active_goal else 'No'}")
+        
         return render(request, 'reading_tracker/dashboard.html', context)
         
     except Exception as e:
-        print(f"Dashboard Error: {str(e)}")  # Debug print
+        print(f"\nDashboard Error: {str(e)}")
         messages.error(request, "There was an error loading the dashboard. Please try again.")
         context = {
             'total_books': 0,
