@@ -1,5 +1,5 @@
 
-                                                                    Book Reading Habit Analyzer
+                                                              Book Reading Habit Analyzer
 
 A web-based application that helps users track, monitor, and analyze their reading habits. Built with Django, this project provides a powerful dashboard for understanding reading patterns, managing goals, and improving consistency.
 
