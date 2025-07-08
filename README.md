@@ -1,52 +1,41 @@
-Book Reading Habit Analyzer
+
+                                                                    Book Reading Habit Analyzer
+
 A web-based application that helps users track, monitor, and analyze their reading habits. Built with Django, this project provides a powerful dashboard for understanding reading patterns, managing goals, and improving consistency.
 
+
 Features
+
 User Management
-
-Secure registration and login
-
-Customizable user profiles
-
-Privacy controls for reading activity
+- Secure registration and login
+- Customizable user profiles
+- Privacy controls for reading activity
 
 Book Library
-
-Add, edit, and delete books
-
-Track reading status: Currently Reading, Completed, Abandoned
-
-Upload cover images
-
-ISBN auto-fill (optional)
+- Add, edit, and delete books
+- Track reading status: Currently Reading, Completed, Abandoned
+- Upload cover images
+- ISBN auto-fill (optional)
 
 Reading Goals
-
-Set daily, weekly, monthly, or yearly targets
-
-Visual goal tracking and completion badges
-
-Motivational streak tracking
+- Set daily, weekly, monthly, or yearly targets
+- Visual goal tracking and completion badges
+- Motivational streak tracking
 
 Analytics Dashboard
-
-Reading progress charts
-
-Genre distribution
-
-Daily/weekly reading streaks
-
-Pages read, total time spent reading
+- Reading progress charts
+- Genre distribution
+- Daily/weekly reading streaks
+- Pages read, total time spent reading
 
 Reading Tracker
+- Log reading sessions
+- Track time, pages, and notes
+- Add reflections and session summaries
 
-Log reading sessions
-
-Track time, pages, and notes
-
-Add reflections and session summaries
 
 Tech Stack
+
 Django – Backend Framework
 HTML/CSS/JavaScript – Frontend UI
 SQLite / PostgreSQL – Database
@@ -54,47 +43,32 @@ Chart.js – Analytics and Charts
 Bootstrap 5 – Styling
 Crispy Forms – Form Styling
 
+
 Installation
-Clone the repo:
-git clone https://github.com/your-username/bapp.git
-cd bapp
 
-Create a virtual environment:
-python -m venv venv
-source venv/bin/activate
-(On Windows: .\venv\Scripts\activate)
+1. Clone the repo:
+   git clone https://github.com/your-username/bapp.git
+   cd bapp
 
-Install dependencies:
-pip install -r requirements.txt
+2. Create a virtual environment:
+   python -m venv venv
+   source venv/bin/activate
+   (On Windows: .\venv\Scripts\activate)
 
-Run migrations:
-python manage.py migrate
+3. Install dependencies:
+   pip install -r requirements.txt
 
-Create superuser:
-python manage.py createsuperuser
+4. Run migrations:
+   python manage.py migrate
 
-Run the server:
-python manage.py runserver
+5. Create superuser:
+   python manage.py createsuperuser
+
+6. Run the server:
+   python manage.py runserver
 
 Then visit: http://127.0.0.1:8000
 
-Environment Setup
-Create a .env file in the root directory with:
 
-DEBUG=True
-SECRET_KEY=your-secret-key
-DATABASE_URL=sqlite:///db.sqlite3
 
-Contributing
-Fork the repo
 
-Create a new branch: git checkout -b feature-name
-
-Commit changes: git commit -m "your message"
-
-Push: git push origin feature-name
-
-Create a Pull Request
-
-License
-Licensed under the MIT License
